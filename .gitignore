@@ -55,3 +55,15 @@ CodeCoverage/
 *.VisualState.xml
 TestResult.xml
 nunit-*.xml
+
+# Логи приложения
+logs/
+
+# IDE
+.idea/
+.vscode/
+.vs/
+
+# macOS
+.DS_Store
+secrets.env
