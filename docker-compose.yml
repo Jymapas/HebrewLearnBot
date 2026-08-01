@@ -1,0 +1,48 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: hebrewlearnbot-postgres
+    # Именно env_file, а не ${...}: подстановка переменных в compose читает файл .env
+    # в каталоге проекта и НЕ видит secrets.env, из-за чего креды приехали бы пустыми.
+    # Образу postgres нужны ровно POSTGRES_DB / POSTGRES_USER / POSTGRES_PASSWORD — они там есть.
+    env_file:
+      - secrets.env
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  bot:
+    image: hebrewlearnbot:latest
+    container_name: hebrewlearnbot-worker
+    build:
+      context: .
+      dockerfile: src/HebrewLearnBot.Worker/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - secrets.env
+    environment:
+      # Хост БД задаётся явно, а не угадывается кодом по наличию /.dockerenv.
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+    ports:
+      - "8182:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/health || exit 1"]
+      interval: 15s
+      timeout: 3s
+      retries: 5
+    volumes:
+      - ./logs:/app/logs
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
