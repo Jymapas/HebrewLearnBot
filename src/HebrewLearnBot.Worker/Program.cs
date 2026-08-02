@@ -1,4 +1,3 @@
-using DotNetEnv;
 using HebrewLearnBot.Application.Abstractions.Persistence;
 using HebrewLearnBot.Application.Abstractions.Randomness;
 using HebrewLearnBot.Application.Abstractions.Telegram;
@@ -28,10 +27,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 using Telegram.Bot;
 
-if (File.Exists("secrets.env"))
-{
-    Env.Load("secrets.env");
-}
+SecretsEnvLoader.Load();
 
 Log.Logger = SerilogSetup.CreateLogger();
 
