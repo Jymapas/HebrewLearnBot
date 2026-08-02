@@ -68,3 +68,6 @@ logs/
 # macOS
 .DS_Store
 secrets.env
+
+# Deploy scripst
+*deploy*.sh
