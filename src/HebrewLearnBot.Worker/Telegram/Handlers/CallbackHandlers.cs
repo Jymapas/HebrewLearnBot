@@ -1,5 +1,6 @@
 using HebrewLearnBot.Application.Abstractions.Persistence;
 using HebrewLearnBot.Application.Abstractions.Time;
+using HebrewLearnBot.Application.UseCases.Alphabet;
 using HebrewLearnBot.Application.UseCases.Quiz;
 using HebrewLearnBot.Application.UseCases.Settings;
 using HebrewLearnBot.Application.UseCases.Topics;
@@ -18,7 +19,9 @@ public sealed class CallbackHandlers
 
     private readonly ITelegramBotClient _botClient;
     private readonly QuizPresenter _quizPresenter;
+    private readonly AlphabetQuizPresenter _alphabetQuizPresenter;
     private readonly SubmitQuizAnswer _submitQuizAnswer;
+    private readonly SubmitLetterAnswer _submitLetterAnswer;
     private readonly SetQuizMode _setQuizMode;
     private readonly SetTopic _setTopic;
     private readonly GetUserSettings _getUserSettings;
@@ -32,7 +35,9 @@ public sealed class CallbackHandlers
     public CallbackHandlers(
         ITelegramBotClient botClient,
         QuizPresenter quizPresenter,
+        AlphabetQuizPresenter alphabetQuizPresenter,
         SubmitQuizAnswer submitQuizAnswer,
+        SubmitLetterAnswer submitLetterAnswer,
         SetQuizMode setQuizMode,
         SetTopic setTopic,
         GetUserSettings getUserSettings,
@@ -45,7 +50,9 @@ public sealed class CallbackHandlers
     {
         _botClient = botClient;
         _quizPresenter = quizPresenter;
+        _alphabetQuizPresenter = alphabetQuizPresenter;
         _submitQuizAnswer = submitQuizAnswer;
+        _submitLetterAnswer = submitLetterAnswer;
         _setQuizMode = setQuizMode;
         _setTopic = setTopic;
         _getUserSettings = getUserSettings;
@@ -77,6 +84,12 @@ public sealed class CallbackHandlers
             if (CallbackData.TryParseQuizAnswer(data, out var questionToken, out var optionIndex))
             {
                 await HandleQuizAnswerAsync(callbackQuery, questionToken, optionIndex, cancellationToken);
+                return;
+            }
+
+            if (CallbackData.TryParseAlphabetAnswer(data, out var alphabetQuestionToken, out var alphabetOptionIndex))
+            {
+                await HandleAlphabetAnswerAsync(callbackQuery, alphabetQuestionToken, alphabetOptionIndex, cancellationToken);
                 return;
             }
 
@@ -173,6 +186,63 @@ public sealed class CallbackHandlers
         var updated = QuizProgressUpdater.Update(data, isCorrect);
         await _quizPresenter.SendNextQuestionAsync(
             chatId.Value, userId, (QuizMode)data.Mode, data.TopicId, updated, cancellationToken);
+    }
+
+    private async Task HandleAlphabetAnswerAsync(
+        CallbackQuery callbackQuery,
+        string questionToken,
+        int optionIndex,
+        CancellationToken cancellationToken)
+    {
+        var userId = callbackQuery.From.Id;
+        var chatId = callbackQuery.Message?.Chat.Id;
+
+        if (chatId is null)
+        {
+            await _botClient.AnswerCallbackQuery(callbackQuery.Id, StaleAnswerText, cancellationToken: cancellationToken);
+            return;
+        }
+
+        var state = await _conversationRepository.GetByUserIdAsync(userId, cancellationToken);
+
+        if (state is not { ConversationName: ConversationNames.AlphabetQuiz, Step: AlphabetQuizSteps.AwaitingAnswer })
+        {
+            await _botClient.AnswerCallbackQuery(callbackQuery.Id, StaleAnswerText, cancellationToken: cancellationToken);
+            return;
+        }
+
+        var data = AlphabetQuizConversationJson.Deserialize(state.StateJson);
+
+        // Основная защита от нажатия на устаревший вопрос — совпадение QuestionToken.
+        if (data is null
+            || data.QuestionToken != questionToken
+            || callbackQuery.Message?.MessageId != data.QuestionMessageId
+            || optionIndex < 0
+            || optionIndex >= data.OptionLetterIds.Count)
+        {
+            await _botClient.AnswerCallbackQuery(callbackQuery.Id, StaleAnswerText, cancellationToken: cancellationToken);
+            return;
+        }
+
+        var isCorrect = optionIndex == data.CorrectIndex;
+
+        // Гасим токен ДО долгих операций — см. комментарий в HandleQuizAnswerAsync.
+        data.QuestionToken = string.Empty;
+        await _conversationRepository.UpsertAsync(
+            userId,
+            ConversationNames.AlphabetQuiz,
+            AlphabetQuizSteps.AwaitingAnswer,
+            AlphabetQuizConversationJson.Serialize(data),
+            _clock.UtcNow,
+            cancellationToken);
+
+        await _botClient.AnswerCallbackQuery(callbackQuery.Id, cancellationToken: cancellationToken);
+
+        await _submitLetterAnswer.ExecuteAsync(new SubmitLetterAnswerCommand(userId, data.LetterId, isCorrect), cancellationToken);
+        await _alphabetQuizPresenter.ShowAnswerAsync(chatId.Value, data, optionIndex, isCorrect, cancellationToken);
+
+        var updated = AlphabetQuizProgressUpdater.Update(data, isCorrect);
+        await _alphabetQuizPresenter.SendNextQuestionAsync(chatId.Value, userId, updated, cancellationToken);
     }
 
     private async Task HandleModeAsync(CallbackQuery callbackQuery, QuizMode mode, CancellationToken cancellationToken)

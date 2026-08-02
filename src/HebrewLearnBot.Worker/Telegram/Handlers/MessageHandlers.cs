@@ -1,6 +1,7 @@
 using HebrewLearnBot.Application.Abstractions.Persistence;
 using HebrewLearnBot.Application.Abstractions.Time;
 using HebrewLearnBot.Application.Formatting;
+using HebrewLearnBot.Application.UseCases.Alphabet;
 using HebrewLearnBot.Application.UseCases.Quiz;
 using HebrewLearnBot.Application.UseCases.Settings;
 using HebrewLearnBot.Application.UseCases.Statistics;
@@ -19,11 +20,14 @@ public sealed class MessageHandlers
     private readonly ITelegramBotClient _botClient;
     private readonly AdminGuard _adminGuard;
     private readonly QuizPresenter _quizPresenter;
+    private readonly AlphabetQuizPresenter _alphabetQuizPresenter;
     private readonly GetUserSettings _getUserSettings;
     private readonly ListTopics _listTopics;
     private readonly CountWords _countWords;
     private readonly GetUserStatistics _getUserStatistics;
+    private readonly GetLetterStatistics _getLetterStatistics;
     private readonly SkipQuizQuestion _skipQuizQuestion;
+    private readonly SkipLetterQuestion _skipLetterQuestion;
     private readonly IConversationStateRepository _conversationRepository;
     private readonly IClock _clock;
     private readonly ILogger<MessageHandlers> _logger;
@@ -32,11 +36,14 @@ public sealed class MessageHandlers
         ITelegramBotClient botClient,
         AdminGuard adminGuard,
         QuizPresenter quizPresenter,
+        AlphabetQuizPresenter alphabetQuizPresenter,
         GetUserSettings getUserSettings,
         ListTopics listTopics,
         CountWords countWords,
         GetUserStatistics getUserStatistics,
+        GetLetterStatistics getLetterStatistics,
         SkipQuizQuestion skipQuizQuestion,
+        SkipLetterQuestion skipLetterQuestion,
         IConversationStateRepository conversationRepository,
         IClock clock,
         ILogger<MessageHandlers> logger)
@@ -44,11 +51,14 @@ public sealed class MessageHandlers
         _botClient = botClient;
         _adminGuard = adminGuard;
         _quizPresenter = quizPresenter;
+        _alphabetQuizPresenter = alphabetQuizPresenter;
         _getUserSettings = getUserSettings;
         _listTopics = listTopics;
         _countWords = countWords;
         _getUserStatistics = getUserStatistics;
+        _getLetterStatistics = getLetterStatistics;
         _skipQuizQuestion = skipQuizQuestion;
+        _skipLetterQuestion = skipLetterQuestion;
         _conversationRepository = conversationRepository;
         _clock = clock;
         _logger = logger;
@@ -96,6 +106,12 @@ public sealed class MessageHandlers
             return;
         }
 
+        if (text == MenuButtons.Alphabet)
+        {
+            await StartAlphabetQuizAsync(chatId, userId, cancellationToken);
+            return;
+        }
+
         if (text == MenuButtons.Mode)
         {
             var settings = await _getUserSettings.ExecuteAsync(userId, cancellationToken);
@@ -123,7 +139,9 @@ public sealed class MessageHandlers
         if (text == MenuButtons.Statistics)
         {
             var statistics = await _getUserStatistics.ExecuteAsync(userId, cancellationToken);
-            await _botClient.SendNoPreview(chatId, StatisticsFormatter.Build(statistics), cancellationToken: cancellationToken);
+            var letterStatistics = await _getLetterStatistics.ExecuteAsync(userId, cancellationToken);
+            await _botClient.SendNoPreview(
+                chatId, StatisticsFormatter.Build(statistics, letterStatistics), cancellationToken: cancellationToken);
             return;
         }
 
@@ -166,6 +184,13 @@ public sealed class MessageHandlers
             return;
         }
 
+        if (state is { ConversationName: ConversationNames.AlphabetQuiz }
+            && AlphabetQuizConversationJson.Deserialize(state.StateJson) is { } alphabetData)
+        {
+            await _alphabetQuizPresenter.FinishAsync(chatId, userId, alphabetData, cancellationToken);
+            return;
+        }
+
         await _botClient.SendNoPreview(
             chatId,
             CommandHandlers.NoActiveQuizText,
@@ -175,25 +200,37 @@ public sealed class MessageHandlers
 
     private async Task HandleSkipAsync(long chatId, long userId, ConversationState? state, CancellationToken cancellationToken)
     {
-        if (state is not { ConversationName: ConversationNames.Quiz }
-            || QuizConversationJson.Deserialize(state.StateJson) is not { } data)
+        if (state is { ConversationName: ConversationNames.Quiz }
+            && QuizConversationJson.Deserialize(state.StateJson) is { } data)
         {
-            await _botClient.SendNoPreview(
-                chatId,
-                CommandHandlers.NoActiveQuizText,
-                ReplyKeyboards.MainMenu(_adminGuard.IsAdmin(userId)),
-                cancellationToken);
+            await _skipQuizQuestion.ExecuteAsync(new SkipQuizQuestionCommand(userId, data.WordId), cancellationToken);
+
+            // Подсветится только правильный вариант — пользователь ничего не выбирал.
+            await _quizPresenter.ShowAnswerAsync(chatId, data, chosenIndex: -1, isCorrect: false, cancellationToken);
+
+            var updated = QuizProgressUpdater.Update(data, isCorrect: false);
+            await _quizPresenter.SendNextQuestionAsync(
+                chatId, userId, (QuizMode)data.Mode, data.TopicId, updated, cancellationToken);
             return;
         }
 
-        await _skipQuizQuestion.ExecuteAsync(new SkipQuizQuestionCommand(userId, data.WordId), cancellationToken);
+        if (state is { ConversationName: ConversationNames.AlphabetQuiz }
+            && AlphabetQuizConversationJson.Deserialize(state.StateJson) is { } alphabetData)
+        {
+            await _skipLetterQuestion.ExecuteAsync(new SkipLetterQuestionCommand(userId, alphabetData.LetterId), cancellationToken);
 
-        // Подсветится только правильный вариант — пользователь ничего не выбирал.
-        await _quizPresenter.ShowAnswerAsync(chatId, data, chosenIndex: -1, isCorrect: false, cancellationToken);
+            await _alphabetQuizPresenter.ShowAnswerAsync(chatId, alphabetData, chosenIndex: -1, isCorrect: false, cancellationToken);
 
-        var updated = QuizProgressUpdater.Update(data, isCorrect: false);
-        await _quizPresenter.SendNextQuestionAsync(
-            chatId, userId, (QuizMode)data.Mode, data.TopicId, updated, cancellationToken);
+            var updatedAlphabet = AlphabetQuizProgressUpdater.Update(alphabetData, isCorrect: false);
+            await _alphabetQuizPresenter.SendNextQuestionAsync(chatId, userId, updatedAlphabet, cancellationToken);
+            return;
+        }
+
+        await _botClient.SendNoPreview(
+            chatId,
+            CommandHandlers.NoActiveQuizText,
+            ReplyKeyboards.MainMenu(_adminGuard.IsAdmin(userId)),
+            cancellationToken);
     }
 
     private async Task StartQuizAsync(long chatId, long userId, CancellationToken cancellationToken)
@@ -202,6 +239,16 @@ public sealed class MessageHandlers
 
         var started = await _quizPresenter.SendNextQuestionAsync(
             chatId, userId, settings.SelectedMode, settings.SelectedTopicId, previous: null, cancellationToken);
+
+        if (started)
+        {
+            await _botClient.SendNoPreview(chatId, CommandHandlers.QuizStartedText, ReplyKeyboards.QuizMenu(), cancellationToken);
+        }
+    }
+
+    private async Task StartAlphabetQuizAsync(long chatId, long userId, CancellationToken cancellationToken)
+    {
+        var started = await _alphabetQuizPresenter.SendNextQuestionAsync(chatId, userId, previous: null, cancellationToken);
 
         if (started)
         {

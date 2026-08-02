@@ -2,8 +2,10 @@ using HebrewLearnBot.Application.Abstractions.Persistence;
 using HebrewLearnBot.Application.Abstractions.Randomness;
 using HebrewLearnBot.Application.Abstractions.Telegram;
 using HebrewLearnBot.Application.Abstractions.Time;
+using HebrewLearnBot.Application.Alphabet;
 using HebrewLearnBot.Application.Import;
 using HebrewLearnBot.Application.Quiz;
+using HebrewLearnBot.Application.UseCases.Alphabet;
 using HebrewLearnBot.Application.UseCases.Quiz;
 using HebrewLearnBot.Application.UseCases.Settings;
 using HebrewLearnBot.Application.UseCases.Statistics;
@@ -62,6 +64,8 @@ try
     services.AddSingleton<NextWordSelector>();
     services.AddSingleton<DistractorPicker>();
     services.AddSingleton<WordCsvParser>();
+    services.AddSingleton<LetterNextSelector>();
+    services.AddSingleton<LetterDistractorPicker>();
 
     // Репозитории и ридеры — Scoped
     services.AddScoped<ITopicRepository, TopicRepository>();
@@ -72,6 +76,8 @@ try
     services.AddScoped<IWordImportStore, WordImportStore>();
     services.AddScoped<IQuizCandidateReader, QuizCandidateReader>();
     services.AddScoped<ITelegramFileDownloader, TelegramFileDownloader>();
+    services.AddScoped<ILetterCandidateReader, LetterCandidateReader>();
+    services.AddScoped<ILetterProgressRepository, LetterProgressRepository>();
 
     // UseCase'ы — Scoped
     services.AddScoped<BuildNextQuestion>();
@@ -85,8 +91,14 @@ try
     services.AddScoped<CountWords>();
     services.AddScoped<ImportWords>();
     services.AddScoped<GetUserStatistics>();
+    services.AddScoped<BuildNextLetterQuestion>();
+    services.AddScoped<SubmitLetterAnswer>();
+    services.AddScoped<SkipLetterQuestion>();
+    services.AddScoped<BuildLetterQuizSummary>();
+    services.AddScoped<GetLetterStatistics>();
 
     services.AddScoped<QuizPresenter>();
+    services.AddScoped<AlphabetQuizPresenter>();
 
     var app = builder.Build();
 

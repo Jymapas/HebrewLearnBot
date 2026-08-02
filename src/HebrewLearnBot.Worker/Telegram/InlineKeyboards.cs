@@ -64,6 +64,48 @@ public static class InlineKeyboards
         return new InlineKeyboardMarkup(rows);
     }
 
+    public static InlineKeyboardMarkup AlphabetOptions(string questionToken, IReadOnlyList<string> optionLabels)
+    {
+        var rows = new List<InlineKeyboardButton[]>(optionLabels.Count);
+
+        for (var index = 0; index < optionLabels.Count; index++)
+        {
+            var button = InlineKeyboardButton.WithCallbackData(
+                optionLabels[index],
+                CallbackData.BuildAlphabetAnswer(questionToken, index));
+
+            rows.Add([button]);
+        }
+
+        return new InlineKeyboardMarkup(rows);
+    }
+
+    public static InlineKeyboardMarkup AnsweredAlphabetOptions(
+        IReadOnlyList<string> optionLabels,
+        int correctIndex,
+        int chosenIndex)
+    {
+        var rows = new List<InlineKeyboardButton[]>(optionLabels.Count);
+
+        for (var index = 0; index < optionLabels.Count; index++)
+        {
+            var button = InlineKeyboardButton.WithCallbackData(optionLabels[index], CallbackData.Noop);
+
+            if (index == correctIndex)
+            {
+                button.Style = KeyboardButtonStyle.Success;
+            }
+            else if (index == chosenIndex)
+            {
+                button.Style = KeyboardButtonStyle.Danger;
+            }
+
+            rows.Add([button]);
+        }
+
+        return new InlineKeyboardMarkup(rows);
+    }
+
     public static InlineKeyboardMarkup ModePicker(QuizMode current)
     {
         var rows = new List<InlineKeyboardButton[]>(ModeLabels.Length);

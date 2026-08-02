@@ -12,6 +12,7 @@ public static class CallbackData
     public const string TopicPagePrefix = "qtp:";
     public const string MenuPrefix = "m:";
     public const string MainMenu = "m:main";
+    public const string AlphabetAnswerPrefix = "a:";
 
     public static string BuildQuizAnswer(string questionToken, int optionIndex)
     {
@@ -29,6 +30,41 @@ public static class CallbackData
         }
 
         var remainder = data[QuizAnswerPrefix.Length..];
+        var separatorIndex = remainder.LastIndexOf(':');
+        if (separatorIndex <= 0 || separatorIndex == remainder.Length - 1)
+        {
+            return false;
+        }
+
+        var token = remainder[..separatorIndex];
+        var indexPart = remainder[(separatorIndex + 1)..];
+
+        if (!int.TryParse(indexPart, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsedIndex))
+        {
+            return false;
+        }
+
+        questionToken = token;
+        optionIndex = parsedIndex;
+        return true;
+    }
+
+    public static string BuildAlphabetAnswer(string questionToken, int optionIndex)
+    {
+        return $"{AlphabetAnswerPrefix}{questionToken}:{optionIndex}";
+    }
+
+    public static bool TryParseAlphabetAnswer(string? data, out string questionToken, out int optionIndex)
+    {
+        questionToken = string.Empty;
+        optionIndex = 0;
+
+        if (string.IsNullOrEmpty(data) || !data.StartsWith(AlphabetAnswerPrefix, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        var remainder = data[AlphabetAnswerPrefix.Length..];
         var separatorIndex = remainder.LastIndexOf(':');
         if (separatorIndex <= 0 || separatorIndex == remainder.Length - 1)
         {

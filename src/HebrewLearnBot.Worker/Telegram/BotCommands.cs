@@ -7,6 +7,7 @@ public static class BotCommands
     public const string Start = "/start";
     public const string Menu = "/menu";
     public const string Quiz = "/quiz";
+    public const string Alphabet = "/alphabet";
     public const string Stop = "/stop";
     public const string Mode = "/mode";
     public const string Topic = "/topic";
@@ -20,6 +21,7 @@ public static class BotCommands
         Start,
         Menu,
         Quiz,
+        Alphabet,
         Stop,
         Mode,
         Topic,
@@ -34,6 +36,7 @@ public static class BotCommands
         [Start] = "Главное меню",
         [Menu] = "Главное меню",
         [Quiz] = "Начать тренировку",
+        [Alphabet] = "Квиз по алфавиту",
         [Stop] = "Завершить тренировку",
         [Mode] = "Выбрать режим квиза",
         [Topic] = "Выбрать тему",

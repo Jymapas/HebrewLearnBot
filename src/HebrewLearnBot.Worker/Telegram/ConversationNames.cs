@@ -4,4 +4,5 @@ public static class ConversationNames
 {
     public const string Quiz = "quiz";
     public const string WordImport = "word-import";
+    public const string AlphabetQuiz = "alphabet-quiz";
 }

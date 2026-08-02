@@ -57,6 +57,61 @@ namespace HebrewLearnBot.Infrastructure.Migrations
                     b.ToTable("conversation_states", (string)null);
                 });
 
+            modelBuilder.Entity("HebrewLearnBot.Domain.Entities.LetterProgress", b =>
+                {
+                    b.Property<long>("UserId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("user_id");
+
+                    b.Property<int>("LetterId")
+                        .HasColumnType("integer")
+                        .HasColumnName("letter_id");
+
+                    b.Property<int>("CorrectCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("correct_count");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<bool?>("LastAnswerCorrect")
+                        .HasColumnType("boolean")
+                        .HasColumnName("last_answer_correct");
+
+                    b.Property<DateTime?>("LastShownAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_shown_at_utc");
+
+                    b.Property<int>("Streak")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("streak");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at_utc");
+
+                    b.Property<int>("WrongCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("wrong_count");
+
+                    b.HasKey("UserId", "LetterId");
+
+                    b.HasIndex("LetterId")
+                        .HasDatabaseName("ix_letter_progress_letter_id");
+
+                    b.HasIndex("UserId", "LastShownAtUtc")
+                        .HasDatabaseName("ix_letter_progress_user_id_last_shown_at_utc");
+
+                    b.ToTable("letter_progress", (string)null);
+                });
+
             modelBuilder.Entity("HebrewLearnBot.Domain.Entities.Topic", b =>
                 {
                     b.Property<int>("Id")

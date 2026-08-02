@@ -45,6 +45,45 @@ public sealed class CallbackDataTests
     }
 
     [Test]
+    public void BuildAlphabetAnswer_TypicalValues_StaysUnder64Bytes()
+    {
+        var token = QuestionTokenGenerator.Generate();
+        var data = CallbackData.BuildAlphabetAnswer(token, 3);
+
+        Assert.That(Encoding.UTF8.GetByteCount(data), Is.LessThanOrEqualTo(64));
+    }
+
+    [Test]
+    public void TryParseAlphabetAnswer_ValidPayload_ReturnsTokenAndIndex()
+    {
+        var data = CallbackData.BuildAlphabetAnswer("Xk3pQ9zA", 2);
+
+        var result = CallbackData.TryParseAlphabetAnswer(data, out var token, out var index);
+
+        Assert.That(result, Is.True);
+        Assert.That(token, Is.EqualTo("Xk3pQ9zA"));
+        Assert.That(index, Is.EqualTo(2));
+    }
+
+    [Test]
+    public void TryParseAlphabetAnswer_QuizAnswerPayload_ReturnsFalse()
+    {
+        var data = CallbackData.BuildQuizAnswer("Xk3pQ9zA", 2);
+
+        var result = CallbackData.TryParseAlphabetAnswer(data, out _, out _);
+
+        Assert.That(result, Is.False);
+    }
+
+    [Test]
+    public void TryParseAlphabetAnswer_Null_ReturnsFalse()
+    {
+        var result = CallbackData.TryParseAlphabetAnswer(null, out _, out _);
+
+        Assert.That(result, Is.False);
+    }
+
+    [Test]
     public void TryParseMode_UnknownNumber_ReturnsFalse()
     {
         var result = CallbackData.TryParseMode("qm:99", out _);

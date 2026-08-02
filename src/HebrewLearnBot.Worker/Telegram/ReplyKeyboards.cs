@@ -11,15 +11,16 @@ public static class ReplyKeyboards
             new[]
             {
                 new KeyboardButton(MenuButtons.Quiz),
-                new KeyboardButton(MenuButtons.Mode)
+                new KeyboardButton(MenuButtons.Alphabet)
             },
             new[]
             {
-                new KeyboardButton(MenuButtons.Topic),
-                new KeyboardButton(MenuButtons.Statistics)
+                new KeyboardButton(MenuButtons.Mode),
+                new KeyboardButton(MenuButtons.Topic)
             },
             new[]
             {
+                new KeyboardButton(MenuButtons.Statistics),
                 new KeyboardButton(MenuButtons.Help)
             }
         };

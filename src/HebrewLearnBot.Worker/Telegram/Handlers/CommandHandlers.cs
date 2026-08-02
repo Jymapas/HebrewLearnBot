@@ -1,6 +1,7 @@
 using HebrewLearnBot.Application.Abstractions.Persistence;
 using HebrewLearnBot.Application.Abstractions.Time;
 using HebrewLearnBot.Application.Formatting;
+using HebrewLearnBot.Application.UseCases.Alphabet;
 using HebrewLearnBot.Application.UseCases.Settings;
 using HebrewLearnBot.Application.UseCases.Statistics;
 using HebrewLearnBot.Application.UseCases.Topics;
@@ -21,14 +22,15 @@ public sealed class CommandHandlers
         "🇷🇺 → 🇮🇱 Русский → иврит + транскрипция\n" +
         "🇷🇺 → 🇮🇱 Русский → иврит\n\n" +
         "Кнопки:\n" +
-        "🎯 Квиз — начать тренировку\n" +
+        "🎯 Квиз — начать тренировку слов\n" +
+        "🔤 Алфавит — квиз на знание букв иврита (/alphabet)\n" +
         "⏭ Пропустить — пропустить текущий вопрос\n" +
         "⏹ Стоп — завершить тренировку и увидеть сводку\n" +
         "⚙️ Режим — выбрать режим вопросов\n" +
         "📚 Тема — выбрать тему слов\n" +
         "📊 Статистика — посмотреть прогресс\n" +
         "ℹ️ Помощь — это сообщение\n\n" +
-        "Слова, в которых вы чаще ошибаетесь, выпадают в квизе чаще остальных.";
+        "Слова и буквы, в которых вы чаще ошибаетесь, выпадают в квизе чаще остальных.";
 
     internal const string QuizStartedText = "Тренировка началась. Отвечайте кнопками.";
 
@@ -55,10 +57,12 @@ public sealed class CommandHandlers
     private readonly ITelegramBotClient _botClient;
     private readonly AdminGuard _adminGuard;
     private readonly QuizPresenter _quizPresenter;
+    private readonly AlphabetQuizPresenter _alphabetQuizPresenter;
     private readonly GetUserSettings _getUserSettings;
     private readonly ListTopics _listTopics;
     private readonly CountWords _countWords;
     private readonly GetUserStatistics _getUserStatistics;
+    private readonly GetLetterStatistics _getLetterStatistics;
     private readonly IConversationStateRepository _conversationRepository;
     private readonly IClock _clock;
     private readonly ILogger<CommandHandlers> _logger;
@@ -67,10 +71,12 @@ public sealed class CommandHandlers
         ITelegramBotClient botClient,
         AdminGuard adminGuard,
         QuizPresenter quizPresenter,
+        AlphabetQuizPresenter alphabetQuizPresenter,
         GetUserSettings getUserSettings,
         ListTopics listTopics,
         CountWords countWords,
         GetUserStatistics getUserStatistics,
+        GetLetterStatistics getLetterStatistics,
         IConversationStateRepository conversationRepository,
         IClock clock,
         ILogger<CommandHandlers> logger)
@@ -78,10 +84,12 @@ public sealed class CommandHandlers
         _botClient = botClient;
         _adminGuard = adminGuard;
         _quizPresenter = quizPresenter;
+        _alphabetQuizPresenter = alphabetQuizPresenter;
         _getUserSettings = getUserSettings;
         _listTopics = listTopics;
         _countWords = countWords;
         _getUserStatistics = getUserStatistics;
+        _getLetterStatistics = getLetterStatistics;
         _conversationRepository = conversationRepository;
         _clock = clock;
         _logger = logger;
@@ -115,6 +123,10 @@ public sealed class CommandHandlers
 
             case BotCommands.Quiz:
                 await StartQuizAsync(chatId, userId, cancellationToken);
+                break;
+
+            case BotCommands.Alphabet:
+                await StartAlphabetQuizAsync(chatId, userId, cancellationToken);
                 break;
 
             case BotCommands.Stop:
@@ -185,6 +197,18 @@ public sealed class CommandHandlers
         }
     }
 
+    private async Task StartAlphabetQuizAsync(long chatId, long userId, CancellationToken cancellationToken)
+    {
+        var started = await _alphabetQuizPresenter.SendNextQuestionAsync(chatId, userId, previous: null, cancellationToken);
+
+        // Клавиатуру квиза шлём после вопроса: иначе ReplyKeyboardMarkup прилетит
+        // раньше и вопрос окажется ниже него в чате.
+        if (started)
+        {
+            await _botClient.SendNoPreview(chatId, QuizStartedText, ReplyKeyboards.QuizMenu(), cancellationToken);
+        }
+    }
+
     private async Task StopQuizAsync(long chatId, long userId, CancellationToken cancellationToken)
     {
         var state = await _conversationRepository.GetByUserIdAsync(userId, cancellationToken);
@@ -193,6 +217,13 @@ public sealed class CommandHandlers
             && QuizConversationJson.Deserialize(state.StateJson) is { } data)
         {
             await _quizPresenter.FinishAsync(chatId, userId, data, cancellationToken);
+            return;
+        }
+
+        if (state is { ConversationName: ConversationNames.AlphabetQuiz }
+            && AlphabetQuizConversationJson.Deserialize(state.StateJson) is { } alphabetData)
+        {
+            await _alphabetQuizPresenter.FinishAsync(chatId, userId, alphabetData, cancellationToken);
             return;
         }
 
@@ -230,8 +261,10 @@ public sealed class CommandHandlers
     private async Task ShowStatisticsAsync(long chatId, long userId, CancellationToken cancellationToken)
     {
         var statistics = await _getUserStatistics.ExecuteAsync(userId, cancellationToken);
+        var letterStatistics = await _getLetterStatistics.ExecuteAsync(userId, cancellationToken);
 
-        await _botClient.SendNoPreview(chatId, StatisticsFormatter.Build(statistics), cancellationToken: cancellationToken);
+        await _botClient.SendNoPreview(
+            chatId, StatisticsFormatter.Build(statistics, letterStatistics), cancellationToken: cancellationToken);
     }
 
     private async Task StartImportAsync(long chatId, long userId, CancellationToken cancellationToken)
