@@ -3,6 +3,7 @@ namespace HebrewLearnBot.Worker.Telegram;
 public static class MenuButtons
 {
     public const string Quiz = "🎯 Квиз";
+    public const string Numbers = "🔢 Числа";
     public const string Alphabet = "🔤 Алфавит";
     public const string Mode = "⚙️ Режим";
     public const string Topic = "📚 Тема";

@@ -6,6 +6,7 @@ using HebrewLearnBot.Application.Alphabet;
 using HebrewLearnBot.Application.Import;
 using HebrewLearnBot.Application.Quiz;
 using HebrewLearnBot.Application.UseCases.Alphabet;
+using HebrewLearnBot.Application.UseCases.Numbers;
 using HebrewLearnBot.Application.UseCases.Quiz;
 using HebrewLearnBot.Application.UseCases.Settings;
 using HebrewLearnBot.Application.UseCases.Statistics;
@@ -21,6 +22,7 @@ using HebrewLearnBot.Worker.Config;
 using HebrewLearnBot.Worker.Hosting;
 using HebrewLearnBot.Worker.Logging;
 using HebrewLearnBot.Worker.Telegram;
+using HebrewLearnBot.Worker.Telegram.Numbers;
 using HebrewLearnBot.Worker.Telegram.Handlers;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -50,6 +52,8 @@ try
     services.AddScoped<MessageHandlers>();
     services.AddScoped<CallbackHandlers>();
     services.AddScoped<DocumentHandlers>();
+    services.AddScoped<NumberQuizHandler>();
+    services.AddSingleton<NumberQuizMenuStore>();
     services.AddHostedService<BotHostedService>();
 
     services.AddDbContext<HebrewDbContext>(db =>
@@ -78,6 +82,7 @@ try
     services.AddScoped<ITelegramFileDownloader, TelegramFileDownloader>();
     services.AddScoped<ILetterCandidateReader, LetterCandidateReader>();
     services.AddScoped<ILetterProgressRepository, LetterProgressRepository>();
+    services.AddScoped<INumberProgressRepository, NumberProgressRepository>();
 
     // UseCase'ы — Scoped
     services.AddScoped<BuildNextQuestion>();
@@ -96,6 +101,10 @@ try
     services.AddScoped<SkipLetterQuestion>();
     services.AddScoped<BuildLetterQuizSummary>();
     services.AddScoped<GetLetterStatistics>();
+    services.AddScoped<BuildNextNumberQuestion>();
+    services.AddScoped<SubmitNumberAnswer>();
+    services.AddScoped<SkipNumberQuestion>();
+    services.AddScoped<GetNumberStatistics>();
 
     services.AddScoped<QuizPresenter>();
     services.AddScoped<AlphabetQuizPresenter>();

@@ -11,7 +11,8 @@ public static class ReplyKeyboards
             new[]
             {
                 new KeyboardButton(MenuButtons.Quiz),
-                new KeyboardButton(MenuButtons.Alphabet)
+                new KeyboardButton(MenuButtons.Alphabet),
+                new KeyboardButton(MenuButtons.Numbers)
             },
             new[]
             {

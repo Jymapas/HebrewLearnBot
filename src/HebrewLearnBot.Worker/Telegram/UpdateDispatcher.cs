@@ -1,4 +1,5 @@
 using HebrewLearnBot.Worker.Telegram.Handlers;
+using HebrewLearnBot.Worker.Telegram.Numbers;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Telegram.Bot;
@@ -9,6 +10,7 @@ namespace HebrewLearnBot.Worker.Telegram;
 
 public sealed class UpdateDispatcher
 {
+    private static readonly SemaphoreSlim[] UserGates = Enumerable.Range(0, 64).Select(_ => new SemaphoreSlim(1, 1)).ToArray();
     private static readonly TimeSpan ErrorRetryDelay = TimeSpan.FromSeconds(5);
 
     private readonly IServiceScopeFactory _scopeFactory;
@@ -22,11 +24,21 @@ public sealed class UpdateDispatcher
 
     public async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
     {
+        // Фиксированное число блокировок не накапливает ключи пользователей;
+        // ответы и навигация одного пользователя обрабатываются последовательно.
+        var userId = update.CallbackQuery?.From.Id ?? update.Message?.From?.Id ?? 0;
+        var gate = UserGates[(int)((ulong)userId % (ulong)UserGates.Length)];
+        await gate.WaitAsync(cancellationToken);
         try
         {
             if (update.CallbackQuery is { } callbackQuery)
             {
                 using var scope = _scopeFactory.CreateScope();
+                var numbers = scope.ServiceProvider.GetRequiredService<NumberQuizHandler>();
+                if (await numbers.TryHandleCallbackAsync(callbackQuery, cancellationToken))
+                {
+                    return;
+                }
                 var callbackHandlers = scope.ServiceProvider.GetRequiredService<CallbackHandlers>();
                 await callbackHandlers.HandleAsync(callbackQuery, cancellationToken);
                 return;
@@ -35,6 +47,12 @@ public sealed class UpdateDispatcher
             if (update.Message is { } message)
             {
                 using var scope = _scopeFactory.CreateScope();
+
+                var numbers = scope.ServiceProvider.GetRequiredService<NumberQuizHandler>();
+                if (await numbers.TryHandleMessageAsync(message, cancellationToken))
+                {
+                    return;
+                }
 
                 if (message.Document is not null)
                 {
@@ -47,16 +65,28 @@ public sealed class UpdateDispatcher
                 {
                     var commandHandlers = scope.ServiceProvider.GetRequiredService<CommandHandlers>();
                     await commandHandlers.HandleAsync(message, cancellationToken);
+                    if (message.From is not null && message.Text.Split(' ', '\n')[0].Split('@')[0] == BotCommands.Stats)
+                    {
+                        await numbers.AppendStatisticsAsync(message.Chat.Id, message.From.Id, cancellationToken);
+                    }
                     return;
                 }
 
                 var messageHandlers = scope.ServiceProvider.GetRequiredService<MessageHandlers>();
                 await messageHandlers.HandleAsync(message, cancellationToken);
+                if (message.From is not null && message.Text?.Trim() == MenuButtons.Statistics)
+                {
+                    await numbers.AppendStatisticsAsync(message.Chat.Id, message.From.Id, cancellationToken);
+                }
             }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unhandled exception while processing update {UpdateId}", update.Id);
+        }
+        finally
+        {
+            gate.Release();
         }
     }
 

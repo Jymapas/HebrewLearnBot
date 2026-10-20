@@ -16,6 +16,7 @@ public sealed class HebrewDbContext : DbContext
     public DbSet<UserSettings> UserSettings => Set<UserSettings>();
     public DbSet<ConversationState> ConversationStates => Set<ConversationState>();
     public DbSet<LetterProgress> LetterProgress => Set<LetterProgress>();
+    public DbSet<NumberProgress> NumberProgress => Set<NumberProgress>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
