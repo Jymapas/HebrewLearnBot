@@ -39,4 +39,13 @@ footer { min-height: 42px; margin-top: 20px; padding-top: 14px; border-top: 1px 
 #next { border: 0; background: #50385e; color: white; padding: 10px 18px; border-radius: 10px; }
 @media (max-width: 500px) { header { height: 54px; } main { padding: 0 12px; } .abacus { width: 65px; height: 62px; border-width: 4px; } .abacus em { width: 7px; height: 11px; } .hero { gap: 5px; } .board { margin-top: 18px; } }
 
-#limit { font: inherit; font-weight: 600; padding: 6px; color: #473451; background: #f7f3fa; border: 1px solid #ddd2e3; border-radius: 8px; }
+select { font: inherit; font-weight: 600; padding: 6px; color: #473451; background: #f7f3fa; border: 1px solid #ddd2e3; border-radius: 8px; }
+
+.settings { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; margin-bottom: 16px; }
+.toggle { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; cursor: pointer; }
+.toggle input { width: 18px; height: 18px; accent-color: #74518f; }
+.tile small { display: block; font: .88rem/1.35 system-ui, sans-serif; }
+.tile .reading { display: none; }
+.show-reading .tile .reading { display: block; }
+#prompts .tile:has(small) { font-size: clamp(1rem, 3vw, 1.3rem); overflow-wrap: anywhere; }
+.columns { grid-template-columns: repeat(2, minmax(0, 1fr)); }

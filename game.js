@@ -1,13 +1,15 @@
 "use strict";
 
-const names = ["אֶפֶס", "אַחַת", "שתַיִים", "שָׁלוֹשׁ", "אַרְבַּע", "חָמֵשׁ", "שֵׁשׁ", "שֶׁבַע", "שְׁמוֹנֶה", "תֵּשַׁע", "עֶשֶׂר"];
-const digits = document.querySelector("#digits");
+const prompts = document.querySelector("#prompts");
 const words = document.querySelector("#words");
 const feedback = document.querySelector("#feedback");
 const next = document.querySelector("#next");
 const limit = document.querySelector("#limit");
 const progress = document.querySelector("progress");
-let deck, matched, selected, missTimer;
+const topic = document.querySelector("#topic");
+const transcription = document.querySelector("#transcription");
+const readingKey = "hebrew-pairs.show-reading";
+let cards, deck, matched, selected, missTimer;
 
 function shuffle(values) {
     const result = [...values];
@@ -24,15 +26,18 @@ function start() {
     selected = null;
     matched = 0;
     progress.max = Number(limit.value);
+    cards = topics[topic.value].cards;
+    document.querySelector(".eyebrow").textContent = topics[topic.value].title;
+    document.querySelector("#prompt-heading").textContent = topic.value === "numbers" ? "Число" : "По-русски";
     deck = [];
-    for (let i = 0; i < progress.max; i += names.length) {
-        deck.push(...shuffle(names.keys()));
+    for (let i = 0; i < progress.max; i += cards.length) {
+        deck.push(...shuffle(cards.keys()).slice(0, progress.max - i));
     }
     next.hidden = true;
     feedback.textContent = "Выбери любую карточку.";
     updateProgress();
     const opening = deck.splice(0, 4);
-    for (const column of [digits, words]) {
+    for (const column of [prompts, words]) {
         column.replaceChildren(...shuffle(opening).map(value => makeTile(column, value)));
     }
 }
@@ -47,27 +52,38 @@ function makeTile(column, value) {
     tile.className = "tile";
     tile.dataset.value = value;
     tile.setAttribute("aria-pressed", "false");
-    tile.textContent = value;
+    const card = cards[value];
+    tile.textContent = card.ru;
     if (column === words) {
         tile.lang = "he";
         tile.dir = "rtl";
-        tile.textContent = names[value];
+        tile.textContent = card.he;
+        const hint = document.createElement("small");
+        hint.className = "reading";
+        hint.lang = "ru";
+        hint.dir = "ltr";
+        hint.textContent = card.reading;
+        tile.append(hint);
+    } else if (card.example) {
+        const example = document.createElement("small");
+        example.textContent = card.example;
+        tile.append(example);
     }
     tile.addEventListener("click", () => choose(tile));
     return tile;
 }
 
 function refill() {
-    const solved = [...digits.querySelectorAll(":disabled")];
+    const solved = [...prompts.querySelectorAll(":disabled")];
     if (solved.length < 2 || !deck.length) return;
-    const active = new Set([...digits.querySelectorAll(":enabled")].map(tile => Number(tile.dataset.value)));
+    const active = new Set([...prompts.querySelectorAll(":enabled")].map(tile => Number(tile.dataset.value)));
     const index = deck.findIndex(value => !active.has(value));
     if (index < 0) return;
     const [value] = deck.splice(index, 1);
     // Освобождаем одну решённую пару. Оставшаяся дождётся следующего совпадения.
     const previous = solved.find(tile => Number(tile.dataset.value) === value) ?? shuffle(solved)[0];
     const word = words.querySelector(`[data-value="${previous.dataset.value}"]`);
-    previous.replaceWith(makeTile(digits, value));
+    previous.replaceWith(makeTile(prompts, value));
     word.replaceWith(makeTile(words, value));
 }
 
@@ -83,7 +99,7 @@ function choose(tile) {
     if (!first || first.parentElement === tile.parentElement) {
         selected = tile;
         tile.setAttribute("aria-pressed", "true");
-        feedback.textContent = tile.parentElement === digits ? "Теперь выбери слово на иврите." : "Теперь выбери число.";
+        feedback.textContent = tile.parentElement === prompts ? "Теперь выбери слово на иврите." : "Теперь выбери пару слева.";
         return;
     }
     if (first.dataset.value !== tile.dataset.value) {
@@ -100,9 +116,10 @@ function choose(tile) {
     first.disabled = tile.disabled = true;
     matched++;
     updateProgress();
-    feedback.textContent = "Верно! Выбери следующую пару.";
+    const note = cards[Number(tile.dataset.value)].note;
+    feedback.textContent = note ? `Верно! ${note}` : "Верно! Выбери следующую пару.";
     if (matched === progress.max) {
-        feedback.textContent = "Тренировка завершена!";
+        feedback.textContent = note ? `Тренировка завершена! ${note}` : "Тренировка завершена!";
         next.hidden = false;
         next.focus();
     } else {
@@ -110,10 +127,29 @@ function choose(tile) {
     }
 }
 
+function applyReading() {
+    document.body.classList.toggle("show-reading", transcription.checked);
+}
+
+try {
+    transcription.checked = localStorage.getItem(readingKey) === "true";
+} catch {
+    // В некоторых WebView хранилище недоступно.
+}
+applyReading();
+transcription.addEventListener("change", () => {
+    applyReading();
+    try {
+        localStorage.setItem(readingKey, String(transcription.checked));
+    } catch {
+        // Настройка по-прежнему действует в текущей игре.
+    }
+});
+topic.addEventListener("change", start);
 limit.addEventListener("change", start);
 next.addEventListener("click", () => {
     start();
-    digits.firstElementChild.focus();
+    prompts.firstElementChild.focus();
 });
 
 start();

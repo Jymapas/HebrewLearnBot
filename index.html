@@ -6,23 +6,32 @@
   <meta name="theme-color" content="#fcfaf5">
   <title>Найди пару · Иврит</title>
   <link rel="stylesheet" href="./style.css">
+  <script src="./cards.js" defer></script>
   <script src="./game.js" defer></script>
 </head>
 <body>
-  <header><strong><i aria-hidden="true">א</i> Иврит</strong><span>Практика чисел</span></header>
+  <header><strong><i aria-hidden="true">א</i> Иврит</strong><span>Практика иврита</span></header>
   <main>
     <div class="hero">
       <div><p class="eyebrow">Числа 0–10 · Женский род</p><h1>Найди пару</h1>
-        <p class="intro">Соедини число и его название на иврите.</p></div>
+        <p class="intro">Соедини карточки с одинаковым значением.</p></div>
       <div class="abacus" aria-hidden="true"><b><em></em><em></em><em></em></b><b><em></em><em></em></b><b><em></em><em></em><em></em><em></em></b></div>
     </div>
     <section class="board" aria-label="Игровое поле">
+      <div class="settings">
+        <label>Тема <select id="topic">
+          <option value="numbers">Числа</option>
+          <option value="particles">Предлоги и частицы</option>
+          <option value="questions">Вопросные слова</option>
+        </select></label>
+        <label class="toggle"><input type="checkbox" id="transcription"> Показывать транскрипцию</label>
+      </div>
       <div class="meter"><label>Цель <select id="limit" aria-label="Длина тренировки">
         <option value="11">11 пар</option><option value="33">33 пары</option><option value="55">55 пар</option>
       </select></label><span id="count"></span></div>
       <progress max="11" value="0" aria-label="Собрано пар"></progress>
       <div class="columns">
-        <section><h2>Число</h2><div id="digits"></div></section>
+        <section><h2 id="prompt-heading">Число</h2><div id="prompts"></div></section>
         <section><h2>Иврит</h2><div id="words"></div></section>
       </div>
       <footer><span id="feedback" role="status"></span><button id="next" hidden>Сыграть ещё раз</button></footer>
