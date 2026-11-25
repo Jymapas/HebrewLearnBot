@@ -119,4 +119,4 @@ dotnet test  HebrewLearnBot.sln -c Release
 
 Исходники находятся в `number-pairs/`. Для локального запуска выполните `python3 -m http.server 8000 --directory number-pairs` и откройте `http://localhost:8000`. GitHub Pages обслуживает корень ветки `gh-pages`. Обновить её после коммита можно командой `git subtree push --prefix=number-pairs origin gh-pages`.
 
-Для будущего запуска внутри Telegram укажите адрес игры и название «Найди пару» в @BotFather через `/setmenubutton`. Игра работает автономно, результаты тренировки в базу бота не отправляются.
+В личном чате с ботом откройте «🔢 Числа» или отправьте `/numbers` и нажмите «Найди пару · 0–10». Игра откроется внутри Telegram как Mini App. Игра работает автономно, результаты тренировки в базу бота не отправляются.

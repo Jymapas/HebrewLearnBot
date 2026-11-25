@@ -188,7 +188,7 @@ public sealed class NumberQuizHandler
             activeQuiz ? ReplyKeyboards.QuizMenu() : ReplyKeyboards.MainMenu(_adminGuard.IsAdmin(userId)), cancellationToken);
         var sent = await _botClient.SendNoPreview(chatId,
             page == "cards" ? "Карточки 0–99: выберите направление." : page == "input" ? "Ввести число 0–99: выберите вид вопроса." : "Выберите тренировку чисел:",
-            NumberQuizKeyboards.Menu(data.Token, page), cancellationToken);
+            NumberQuizKeyboards.Menu(data.Token, page, isPrivateChat: chatId == userId), cancellationToken);
         data.MessageId = sent.MessageId;
         _menus.Set(userId, data);
     }

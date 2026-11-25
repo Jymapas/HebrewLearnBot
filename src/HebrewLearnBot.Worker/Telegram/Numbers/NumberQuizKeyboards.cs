@@ -1,4 +1,5 @@
 using HebrewLearnBot.Application.Formatting;
+using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
 
 namespace HebrewLearnBot.Worker.Telegram.Numbers;
@@ -7,7 +8,7 @@ public static class NumberQuizKeyboards
 {
     public const string Prefix = "num:";
 
-    public static InlineKeyboardMarkup Menu(string token, string page)
+    public static InlineKeyboardMarkup Menu(string token, string page, bool isPrivateChat)
     {
         (string Label, string Action)[] choices = page switch
         {
@@ -32,10 +33,19 @@ public static class NumberQuizKeyboards
                 ("Число → иврит 0–10 · 6 вариантов", "7")
             ]
         };
-        return new InlineKeyboardMarkup(choices.Select(choice => new[]
+        var rows = choices.Select(choice => new[]
         {
             InlineKeyboardButton.WithCallbackData(BidiText.ForButton(choice.Label), $"{Prefix}{token}:{choice.Action}")
-        }));
+        }).ToList();
+
+        if (page == "menu" && isPrivateChat)
+        {
+            rows.Add([InlineKeyboardButton.WithWebApp(
+                BidiText.ForButton("Найди пару · 0–10"),
+                new WebAppInfo { Url = "https://jymapas.github.io/HebrewLearnBot/" })]);
+        }
+
+        return new InlineKeyboardMarkup(rows);
     }
 
     public static InlineKeyboardMarkup Options(NumberQuizConversationData data, int? chosenIndex)
