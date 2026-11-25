@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#fcfaf5">
+  <title>Найди пару · Иврит</title>
+  <link rel="stylesheet" href="./style.css">
+  <script src="./game.js" defer></script>
+</head>
+<body>
+  <header><strong><i aria-hidden="true">א</i> Иврит</strong><span>Практика чисел</span></header>
+  <main>
+    <div class="hero">
+      <div><p class="eyebrow">Числа 0–10 · Женский род</p><h1>Найди пару</h1>
+        <p class="intro">Соедини число и его название на иврите.</p></div>
+      <div class="abacus" aria-hidden="true"><b><em></em><em></em><em></em></b><b><em></em><em></em></b><b><em></em><em></em><em></em><em></em></b></div>
+    </div>
+    <section class="board" aria-label="Игровое поле">
+      <div class="meter"><strong id="round"></strong><span id="count"></span></div>
+      <progress max="11" value="0" aria-label="Собрано пар"></progress>
+      <div class="columns">
+        <section><h2>Число</h2><div id="digits"></div></section>
+        <section><h2>Иврит</h2><div id="words"></div></section>
+      </div>
+      <footer><span id="feedback" role="status"></span><button id="next" hidden></button></footer>
+    </section>
+    <noscript>Для игры включи JavaScript.</noscript>
+  </main>
+</body>
+</html>
