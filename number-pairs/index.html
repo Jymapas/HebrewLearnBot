@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#fcfaf5">
   <title>Найди пару · Иврит</title>
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg">
   <link rel="stylesheet" href="./style.css">
   <script src="./cards.js" defer></script>
   <script src="./game.js" defer></script>
@@ -34,6 +35,12 @@
         <section><h2 id="prompt-heading">Число</h2><div id="prompts"></div></section>
         <section><h2>Иврит</h2><div id="words"></div></section>
       </div>
+      <section id="results" hidden aria-label="Итоги тренировки">
+        <h2>Итоги тренировки</h2>
+        <dl><div><dt>Собрано пар</dt><dd id="correct"></dd></div>
+          <div><dt>Ошибки</dt><dd id="errors"></dd></div>
+          <div><dt>Точность</dt><dd id="accuracy"></dd></div></dl>
+      </section>
       <footer><span id="feedback" role="status"></span><button id="next" hidden>Сыграть ещё раз</button></footer>
     </section>
     <noscript>Для игры включи JavaScript.</noscript>

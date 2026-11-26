@@ -24,11 +24,12 @@ progress { display: block; appearance: none; width: 100%; height: 8px; border: 0
 progress::-webkit-progress-bar { background: #eee9ef; }
 progress::-webkit-progress-value { background: #866596; }
 progress::-moz-progress-bar { background: #866596; }
-.columns { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(12px, 3vw, 24px); }
-h2 { margin: 0 0 10px; }
-.columns section > div { display: grid; gap: 10px; }
+.columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: clamp(12px, 3vw, 24px); row-gap: 10px; }
+h2 { margin: 0; }
+.columns section { min-width: 0; grid-row: span 5; display: grid; grid-template-rows: subgrid; }
+.columns section > div { grid-template-columns: minmax(0, 1fr); min-width: 0; grid-row: span 4; display: grid; grid-template-rows: subgrid; }
 button { cursor: pointer; touch-action: manipulation; font: inherit; }
-.tile { position: relative; min-height: 60px; background: #fbf7ef; color: #3c3337; border: 1px solid #dbd2c3; box-shadow: 0 3px #ded5c7; border-radius: 12px; font-weight: 600; font-size: 1.65rem; }
+.tile { min-width: 0; overflow-wrap: anywhere; position: relative; min-height: 60px; background: #fbf7ef; color: #3c3337; border: 1px solid #dbd2c3; box-shadow: 0 3px #ded5c7; border-radius: 12px; font-weight: 600; font-size: 1.65rem; }
 .tile[lang=he] { font: 2rem/1.55 Arial, sans-serif; background: #f7f3fa; color: #473451; border-color: #ddd2e3; box-shadow: 0 3px #dfd4e5; }
 .tile[aria-pressed=true] { background: #e9dafa; border-color: #74518f; box-shadow: 0 3px #74518f; }
 .tile.miss { background: #ffe3d9; border-color: #ad543c; }
@@ -48,4 +49,13 @@ select { font: inherit; font-weight: 600; padding: 6px; color: #473451; backgrou
 .tile .reading { display: none; }
 .show-reading .tile .reading { display: block; }
 #prompts .tile:has(small) { font-size: clamp(1rem, 3vw, 1.3rem); overflow-wrap: anywhere; }
-.columns { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+[hidden] { display: none !important; }
+.tile:disabled { animation: clear-pair .32s forwards; pointer-events: none; }
+@keyframes clear-pair {
+    0%, 60% { opacity: 1; }
+    100% { opacity: 0; visibility: hidden; }
+}
+@media (prefers-reduced-motion: reduce) { .tile:disabled { animation-duration: .01s; } }
+#results dl { display: flex; flex-wrap: wrap; gap: 18px 36px; }
+#results dt { color: #665f68; }
+#results dd { margin: 0; font-size: 1.7rem; font-weight: 600; }

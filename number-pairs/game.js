@@ -9,7 +9,9 @@ const progress = document.querySelector("progress");
 const topic = document.querySelector("#topic");
 const transcription = document.querySelector("#transcription");
 const readingKey = "hebrew-pairs.show-reading";
-let cards, deck, matched, selected, missTimer;
+const results = document.querySelector("#results");
+const columns = document.querySelector(".columns");
+let cards, deck, matched, mistakes, selected, missedTiles, missTimer, vacancies;
 
 function shuffle(values) {
     const result = [...values];
@@ -22,7 +24,11 @@ function shuffle(values) {
 
 function start() {
     clearTimeout(missTimer);
-    missTimer = null;
+    missedTiles = [];
+    vacancies = [];
+    mistakes = 0;
+    results.hidden = true;
+    columns.hidden = false;
     selected = null;
     matched = 0;
     progress.max = Number(limit.value);
@@ -74,21 +80,25 @@ function makeTile(column, value) {
 }
 
 function refill() {
-    const solved = [...prompts.querySelectorAll(":disabled")];
-    if (solved.length < 2 || !deck.length) return;
+    if (vacancies.length < 2 || !deck.length) return;
     const active = new Set([...prompts.querySelectorAll(":enabled")].map(tile => Number(tile.dataset.value)));
     const index = deck.findIndex(value => !active.has(value));
     if (index < 0) return;
     const [value] = deck.splice(index, 1);
-    // Освобождаем одну решённую пару. Оставшаяся дождётся следующего совпадения.
-    const previous = solved.find(tile => Number(tile.dataset.value) === value) ?? shuffle(solved)[0];
-    const word = words.querySelector(`[data-value="${previous.dataset.value}"]`);
-    previous.replaceWith(makeTile(prompts, value));
+    const { prompt, word } = vacancies.shift();
+    prompt.replaceWith(makeTile(prompts, value));
     word.replaceWith(makeTile(words, value));
 }
 
+function clearMiss() {
+    clearTimeout(missTimer);
+    for (const tile of missedTiles) tile.classList.remove("miss");
+    missedTiles = [];
+}
+
 function choose(tile) {
-    if (missTimer || tile.disabled) return;
+    if (tile.disabled) return;
+    clearMiss();
     const first = selected;
     if (first) first.setAttribute("aria-pressed", "false");
     selected = null;
@@ -104,15 +114,16 @@ function choose(tile) {
     }
     if (first.dataset.value !== tile.dataset.value) {
         feedback.textContent = "Эти карточки из разных пар. Попробуй ещё раз.";
+        mistakes++;
+        missedTiles = [first, tile];
         first.classList.add("miss");
         tile.classList.add("miss");
-        missTimer = setTimeout(() => {
-            first.classList.remove("miss");
-            tile.classList.remove("miss");
-            missTimer = null;
-        }, 580);
+        missTimer = setTimeout(clearMiss, 580);
         return;
     }
+    const prompt = first.parentElement === prompts ? first : tile;
+    const word = first.parentElement === words ? first : tile;
+    vacancies.push({ prompt, word });
     first.disabled = tile.disabled = true;
     matched++;
     updateProgress();
@@ -120,6 +131,11 @@ function choose(tile) {
     feedback.textContent = note ? `Верно! ${note}` : "Верно! Выбери следующую пару.";
     if (matched === progress.max) {
         feedback.textContent = note ? `Тренировка завершена! ${note}` : "Тренировка завершена!";
+        columns.hidden = true;
+        results.hidden = false;
+        document.querySelector("#correct").textContent = matched;
+        document.querySelector("#errors").textContent = mistakes;
+        document.querySelector("#accuracy").textContent = Math.round(100 * matched / (matched + mistakes)) + "%";
         next.hidden = false;
         next.focus();
     } else {
