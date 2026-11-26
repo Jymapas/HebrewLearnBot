@@ -11,7 +11,9 @@ const transcription = document.querySelector("#transcription");
 const readingKey = "hebrew-pairs.show-reading";
 const results = document.querySelector("#results");
 const columns = document.querySelector(".columns");
-let cards, deck, matched, mistakes, selected, missedTiles, missTimer, vacancies;
+const returnDelay = 5000;
+let cards, deck, matched, mistakes, selected, missedTiles, missTimer, refillTimer;
+let repeatAfter, previousWordRow, lastMatchAt;
 
 function shuffle(values) {
     const result = [...values];
@@ -25,7 +27,10 @@ function shuffle(values) {
 function start() {
     clearTimeout(missTimer);
     missedTiles = [];
-    vacancies = [];
+    clearTimeout(refillTimer);
+    repeatAfter = new Map();
+    previousWordRow = new Map();
+    lastMatchAt = 0;
     mistakes = 0;
     results.hidden = true;
     columns.hidden = false;
@@ -43,9 +48,12 @@ function start() {
     feedback.textContent = "Выбери любую карточку.";
     updateProgress();
     const opening = deck.splice(0, 4);
-    for (const column of [prompts, words]) {
-        column.replaceChildren(...shuffle(opening).map(value => makeTile(column, value)));
+    const translations = shuffle(opening);
+    if (translations.every((value, row) => value === opening[row])) {
+        translations.push(translations.shift());
     }
+    prompts.replaceChildren(...opening.map(value => makeTile(prompts, value)));
+    words.replaceChildren(...translations.map(value => makeTile(words, value)));
 }
 
 function updateProgress() {
@@ -80,14 +88,42 @@ function makeTile(column, value) {
 }
 
 function refill() {
-    if (vacancies.length < 2 || !deck.length) return;
+    clearTimeout(refillTimer);
+    if (!deck.length) return;
+    const emptyPrompts = [...prompts.querySelectorAll(":disabled")];
+    if (!emptyPrompts.length) return;
+
+    const now = performance.now();
     const active = new Set([...prompts.querySelectorAll(":enabled")].map(tile => Number(tile.dataset.value)));
-    const index = deck.findIndex(value => !active.has(value));
-    if (index < 0) return;
-    const [value] = deck.splice(index, 1);
-    const { prompt, word } = vacancies.shift();
+    const availableAt = value => repeatAfter.get(value) ?? 0;
+    const candidates = deck.filter(value => !active.has(value));
+    if (!candidates.length) return;
+    const slotReady = emptyPrompts.length === 1 ? lastMatchAt + returnDelay : 0;
+    const readyAt = Math.max(slotReady, Math.min(...candidates.map(availableAt)));
+    if (readyAt > now) {
+        refillTimer = setTimeout(refill, Math.ceil(readyAt - now));
+        return;
+    }
+
+    const value = candidates.find(candidate => availableAt(candidate) <= now);
+    deck.splice(deck.indexOf(value), 1);
+    const prompt = shuffle(emptyPrompts)[0];
+    const row = [...prompts.children].indexOf(prompt);
+    const oldWordRow = previousWordRow.get(row);
+    const wordSlots = [...words.children];
+    const emptyWords = shuffle(wordSlots.filter(tile => tile.disabled));
+    const hole = emptyWords[0];
+    // Даже при одном свободном месте меняем соответствие строк. Выбранная карточка остаётся на месте.
+    const targets = wordSlots.filter((tile, index) => index !== oldWordRow && tile !== selected);
+    const target = shuffle(targets)[0];
+    if (!target.disabled) {
+        target.replaceWith(makeTile(words, value));
+        hole.replaceWith(target);
+    } else {
+        target.replaceWith(makeTile(words, value));
+    }
     prompt.replaceWith(makeTile(prompts, value));
-    word.replaceWith(makeTile(words, value));
+    refill();
 }
 
 function clearMiss() {
@@ -123,7 +159,9 @@ function choose(tile) {
     }
     const prompt = first.parentElement === prompts ? first : tile;
     const word = first.parentElement === words ? first : tile;
-    vacancies.push({ prompt, word });
+    lastMatchAt = performance.now();
+    repeatAfter.set(Number(tile.dataset.value), lastMatchAt + returnDelay);
+    previousWordRow.set([...prompts.children].indexOf(prompt), [...words.children].indexOf(word));
     first.disabled = tile.disabled = true;
     matched++;
     updateProgress();
